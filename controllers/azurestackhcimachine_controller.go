@@ -222,6 +222,15 @@ func (r *AzureStackHCIMachineReconciler) reconcileNormal(machineScope *scope.Mac
 	// TODO(vincepri): Remove this annotation when clusterctl is no longer relevant.
 	machineScope.SetAnnotation("cluster-api-provider-azurestackhci", "true")
 
+	fmt.Printf("--------------------------Setting machineScope to Ready for BM (%s, %v, %s, %s)", vm.Name, vm.Status.VMState, vm.Spec.HostType, machineScope.AzureStackHCIMachine.Spec.HostType)
+	machineScope.Info(fmt.Sprintf("--------------------------Setting machineScope to Ready for BM (%s, %v, %s, %s)", vm.Name, vm.Status.VMState, vm.Spec.HostType, machineScope.AzureStackHCIMachine.Spec.HostType))
+	if vm.Spec.HostType == infrav1.HostTypeBareMetal {
+		fmt.Printf("Setting machineScope to Ready for BM (%s, %v)", vm.Name, vm.Status.VMState)
+		machineScope.SetReady()
+		// For baremetal, always set to succeeded so other changes can take effect
+		machineScope.SetVMState(&infrav1.VMStateSucceeded)
+	}
+
 	if vm.Status.VMState == nil {
 		machineScope.Info("Waiting for VM controller to set vm state")
 		return reconcile.Result{Requeue: true, RequeueAfter: time.Minute}, nil
@@ -229,6 +238,13 @@ func (r *AzureStackHCIMachineReconciler) reconcileNormal(machineScope *scope.Mac
 
 	// changed to avoid using dereference in function param for deep copying
 	machineScope.SetVMState(vm.Status.VMState)
+
+	if vm.Spec.HostType == infrav1.HostTypeBareMetal {
+		fmt.Printf("-------------------Setting machineScope to Ready for BM (%s, %v)", vm.Name, vm.Status.VMState)
+		machineScope.SetReady()
+		// For baremetal, always set to succeeded so other changes can take effect
+		machineScope.SetVMState(&infrav1.VMStateSucceeded)
+	}
 
 	switch *machineScope.GetVMState() {
 	case infrav1.VMStateSucceeded:
